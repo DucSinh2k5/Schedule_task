@@ -4,7 +4,7 @@ on:
   schedule:
     # Chạy mỗi ngày lúc 08:00 sáng giờ Việt Nam.
     # GitHub Actions dùng UTC, Việt Nam UTC+7 nên 08:00 VN = 01:00 UTC.
-    - cron: "0 1 * * *"
+    - cron: "0 8 * * *"
 
   # Cho phép bấm Run workflow để test thủ công khi cần.
   workflow_dispatch:
