@@ -1,12 +1,16 @@
 # Crawl dữ liệu 500 mã cổ phiếu
 # Chạy được trên GitHub Actions
-# Output CSV sẽ được ghi vào: data/output/Data_500_stocks_2026.csv
+# Ngày lấy dữ liệu = ngày chạy workflow theo giờ Việt Nam - 1 ngày
+# Output CSV: data/output/data_stock_today-1.csv
 
 import os
 import time
 import ast
 import random
 import re
+from datetime import datetime, timedelta
+from zoneinfo import ZoneInfo
+
 import pandas as pd
 
 from vnstock.api.quote import Quote
@@ -18,20 +22,29 @@ from tenacity import RetryError
 # =========================
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 
 # GitHub Actions chạy trong thư mục repo, không dùng được đường dẫn F:\...
 DATA_DIR = os.path.join(BASE_DIR, "data", "output")
 os.makedirs(DATA_DIR, exist_ok=True)
 
-OUTPUT_FILE = os.path.join(DATA_DIR, "Data_500_stocks_2026.csv")
+# Ngày lấy dữ liệu = hôm nay theo giờ Việt Nam - 1 ngày.
+# Ví dụ workflow chạy ngày 2026-05-18 lúc 08:00 VN
+# thì TARGET_DATE = 2026-05-17.
+TARGET_DATE = os.environ.get("TARGET_DATE")
+if not TARGET_DATE:
+    TARGET_DATE = (datetime.now(VN_TZ).date() - timedelta(days=1)).isoformat()
 
-# Đặt file symbol500.txt ở cùng cấp với main.py trong repo GitHub
+START_DATE = TARGET_DATE
+END_DATE = TARGET_DATE
+
+# Tên file output theo yêu cầu.
+OUTPUT_FILE = os.path.join(DATA_DIR, "data_stock_today-1.csv")
+
+# Đặt file symbol500.txt ở cùng cấp với main.py trong repo GitHub.
 SYMBOL_FILE = os.path.join(BASE_DIR, "symbol500.txt")
 
 SOURCE = "KBS"
-
-START_DATE = "2026-05-04"
-END_DATE = "2026-05-04"
 
 FAST_MODE = True
 REQUESTS_PER_MINUTE = 20
@@ -86,6 +99,8 @@ with open(SYMBOL_FILE, "r", encoding="utf-8") as f:
         all_symbols.extend(symbols)
 
 all_symbols = all_symbols[:500]
+print(f"Ngày chạy theo giờ Việt Nam: {datetime.now(VN_TZ).date().isoformat()}")
+print(f"Ngày lấy dữ liệu: {TARGET_DATE}")
 print(f"Tổng số mã: {len(all_symbols)}")
 
 if FAST_MODE:
@@ -215,6 +230,7 @@ for batch_index, batch in enumerate(batches, start=1):
             continue
 
         df_history["symbol"] = symbol
+        df_history["target_date"] = TARGET_DATE
         batch_df_list.append(df_history)
         print(f"Hoàn tất: {symbol}")
 
@@ -255,16 +271,24 @@ for batch_index, batch in enumerate(batches, start=1):
         time.sleep(random_sleep)
 
 
-# Nếu không lấy được dữ liệu nào, vẫn tạo file CSV để GitHub có artifact
+# Nếu không lấy được dữ liệu nào, ví dụ cuối tuần không có phiên giao dịch,
+# vẫn tạo file CSV để GitHub Actions upload và commit được bình thường.
 if not wrote_any_data:
     pd.DataFrame(
-        columns=["symbol", "message"]
+        [
+            {
+                "target_date": TARGET_DATE,
+                "symbol": "",
+                "status": "no_data",
+                "message": "Không có dữ liệu giao dịch cho ngày này hoặc API không trả dữ liệu."
+            }
+        ]
     ).to_csv(
         OUTPUT_FILE,
         index=False,
         encoding="utf-8-sig"
     )
-    print("Không có dữ liệu nào. Đã tạo file CSV rỗng.")
+    print("Không có dữ liệu nào. Đã tạo file CSV báo no_data.")
 
 
 # =========================
@@ -273,5 +297,6 @@ if not wrote_any_data:
 
 print("\n" + "=" * 50)
 print("HOÀN TẤT")
+print(f"Ngày lấy dữ liệu: {TARGET_DATE}")
 print(f"Lưu file tại: {OUTPUT_FILE}")
 print("=" * 50)
