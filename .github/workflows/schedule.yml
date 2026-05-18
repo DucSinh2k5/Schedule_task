@@ -2,11 +2,11 @@ name: Scheduled Task
 
 on:
   schedule:
-    # Chạy mỗi ngày lúc 07:00 sáng giờ Việt Nam
-    # GitHub dùng UTC, Việt Nam UTC+7 nên 07:00 VN = 00:00 UTC
-    - cron: "0 0 * * *"
+    # Chạy mỗi ngày lúc 08:00 sáng giờ Việt Nam.
+    # GitHub Actions dùng UTC, Việt Nam UTC+7 nên 08:00 VN = 01:00 UTC.
+    - cron: "0 1 * * *"
 
-  # Cho phép bấm Run workflow để test thủ công
+  # Cho phép bấm Run workflow để test thủ công khi cần.
   workflow_dispatch:
 
 permissions:
@@ -37,8 +37,8 @@ jobs:
       - name: Upload CSV artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Data_500_stocks_2026
-          path: data/output/Data_500_stocks_2026.csv
+          name: data_stock_today-1
+          path: data/output/data_stock_today-1.csv
           if-no-files-found: error
           retention-days: 30
 
@@ -46,6 +46,6 @@ jobs:
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add data/output/Data_500_stocks_2026.csv
-          git commit -m "Update stock CSV output" || echo "No changes to commit"
+          git add data/output/data_stock_today-1.csv
+          git commit -m "Update stock CSV for today-1" || echo "No changes to commit"
           git push
