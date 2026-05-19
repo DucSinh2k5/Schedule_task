@@ -1,7 +1,7 @@
 # Crawl dữ liệu 500 mã cổ phiếu
 # Chạy được trên GitHub Actions
 # Ngày lấy dữ liệu = ngày chạy workflow theo giờ Việt Nam - 1 ngày
-# Output CSV: data/output/data_stock_today-1.csv
+# Output CSV ví dụ: data/stock_17_5.csv nếu workflow chạy ngày 18/5 giờ Việt Nam
 
 import os
 import time
@@ -24,22 +24,27 @@ from tenacity import RetryError
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 VN_TZ = ZoneInfo("Asia/Ho_Chi_Minh")
 
-# GitHub Actions chạy trong thư mục repo, không dùng được đường dẫn F:\...
-DATA_DIR = os.path.join(BASE_DIR, "data", "output")
+# Lưu tất cả file CSV trong folder data ngay trong repo GitHub.
+DATA_DIR = os.path.join(BASE_DIR, "data")
 os.makedirs(DATA_DIR, exist_ok=True)
 
 # Ngày lấy dữ liệu = hôm nay theo giờ Việt Nam - 1 ngày.
-# Ví dụ workflow chạy ngày 2026-05-18 lúc 08:00 VN
-# thì TARGET_DATE = 2026-05-17.
-TARGET_DATE = os.environ.get("TARGET_DATE")
-if not TARGET_DATE:
-    TARGET_DATE = (datetime.now(VN_TZ).date() - timedelta(days=1)).isoformat()
+# Ví dụ workflow chạy ngày 2026-05-18 thì TARGET_DATE = 2026-05-17.
+# Có thể test thủ công bằng cách set biến môi trường TARGET_DATE=2026-05-17.
+TARGET_DATE_ENV = os.environ.get("TARGET_DATE")
+if TARGET_DATE_ENV:
+    TARGET_DATE_OBJ = datetime.strptime(TARGET_DATE_ENV, "%Y-%m-%d").date()
+else:
+    TARGET_DATE_OBJ = datetime.now(VN_TZ).date() - timedelta(days=1)
 
+TARGET_DATE = TARGET_DATE_OBJ.isoformat()
 START_DATE = TARGET_DATE
 END_DATE = TARGET_DATE
 
-# Tên file output theo yêu cầu.
-OUTPUT_FILE = os.path.join(DATA_DIR, "data_stock_today-1.csv")
+# Tên file output theo định dạng stock_ngày_tháng.csv
+# Ví dụ TARGET_DATE = 2026-05-17 -> stock_17_5.csv
+OUTPUT_FILENAME = f"stock_{TARGET_DATE_OBJ.day}_{TARGET_DATE_OBJ.month}.csv"
+OUTPUT_FILE = os.path.join(DATA_DIR, OUTPUT_FILENAME)
 
 # Đặt file symbol500.txt ở cùng cấp với main.py trong repo GitHub.
 SYMBOL_FILE = os.path.join(BASE_DIR, "symbol500.txt")
@@ -101,6 +106,7 @@ with open(SYMBOL_FILE, "r", encoding="utf-8") as f:
 all_symbols = all_symbols[:500]
 print(f"Ngày chạy theo giờ Việt Nam: {datetime.now(VN_TZ).date().isoformat()}")
 print(f"Ngày lấy dữ liệu: {TARGET_DATE}")
+print(f"Tên file output: {OUTPUT_FILENAME}")
 print(f"Tổng số mã: {len(all_symbols)}")
 
 if FAST_MODE:
@@ -122,9 +128,11 @@ print(f"Tổng batch: {len(batches)}")
 
 
 # =========================
-# XÓA FILE CŨ NẾU TỒN TẠI
+# XÓA FILE CŨ CÙNG TÊN NẾU TỒN TẠI
 # =========================
 
+# Chỉ xóa file của đúng ngày đang chạy để ghi lại dữ liệu mới.
+# Các file ngày khác trong folder data vẫn được giữ nguyên.
 if os.path.exists(OUTPUT_FILE):
     os.remove(OUTPUT_FILE)
 
@@ -246,7 +254,6 @@ for batch_index, batch in enumerate(batches, start=1):
             ignore_index=True
         )
 
-        # Ghi header ở batch đầu tiên có dữ liệu
         write_header = not wrote_any_data
         write_mode = "w" if write_header else "a"
 
