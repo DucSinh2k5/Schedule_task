@@ -2,8 +2,8 @@ name: Scheduled Task
 
 on:
   schedule:
-    # Chạy mỗi ngày lúc 08:00 sáng giờ Việt Nam.
-    # GitHub Actions dùng UTC, Việt Nam UTC+7 nên 08:00 VN = 01:00 UTC.
+    # Chạy mỗi ngày lúc 15:00 giờ Việt Nam.
+    # GitHub Actions dùng UTC, Việt Nam UTC+7 nên 15:00 VN = 08:00 UTC.
     - cron: "0 8 * * *"
 
   # Cho phép bấm Run workflow để test thủ công khi cần.
@@ -34,18 +34,18 @@ jobs:
       - name: Run script
         run: python main.py
 
-      - name: Upload CSV artifact
+      - name: Upload CSV artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: data_stock_today-1
-          path: data/output/data_stock_today-1.csv
+          name: stock-csv-files
+          path: data/stock_*.csv
           if-no-files-found: error
           retention-days: 30
 
-      - name: Commit CSV output to repo
+      - name: Commit CSV outputs to repo
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git add data/output/data_stock_today-1.csv
-          git commit -m "Update stock CSV for today-1" || echo "No changes to commit"
+          git add data/*.csv
+          git commit -m "Add stock CSV output" || echo "No changes to commit"
           git push
